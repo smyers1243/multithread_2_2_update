@@ -1,0 +1,4 @@
+10:57:14 2-13-2013
+Can't execute SQL statement!
+c:/users/lmacdonald/desktop/UP_Dir_test/05_b_record_entry_four/before/100_browse_entry_drop_constraints.sql: SQL Script
+ERROR:  constraint "browse_entry_def_map_pkey" of relation "browse_entry_def_map" does not exist

@@ -1,0 +1,10 @@
+10:57:42 2-13-2013
+Can't execute SQL statement!
+c:/users/lmacdonald/desktop/UP_Dir_test/05_b_record_entry_four/record_entry_aaa_four_b_data.sql: Execute fourth (b) part of aaa trigger on biblio.record_entry.
+ERROR:  index row size 4008 exceeds maximum 2712 for index "browse_entry_value_key"
+HINT:  Values larger than 1/3 of a buffer page cannot be indexed.
+Consider a function index of an MD5 hash of the value, or use full text indexing.
+CONTEXT:  SQL statement "INSERT INTO metabib.browse_entry (value) VALUES (normalized_value)"
+PL/pgSQL function metabib.reingest_metabib_field_entries_browse(bigint) line 20 at SQL statement
+SQL statement "SELECT metabib.reingest_metabib_field_entries_browse(rec.id)"
+PL/pgSQL function biblio.wrap_record_entry_aaa_four_b(bigint,bigint) line 7 at PERFORM

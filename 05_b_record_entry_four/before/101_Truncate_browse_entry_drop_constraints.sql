@@ -1,0 +1,1 @@
+TRUNCATE TABLE metabib.browse_entry_def_map;

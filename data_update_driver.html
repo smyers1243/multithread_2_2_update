@@ -1,0 +1,449 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>data_update_driver.pl</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:" />
+</head>
+
+<body style="background-color: white">
+
+
+<!-- INDEX BEGIN -->
+<div name="index">
+<p><a name="__index__"></a></p>
+
+<ul>
+
+	<li><a href="#name">Name</a></li>
+	<li><a href="#description">Description</a></li>
+	<li><a href="#modules">Modules</a></li>
+	<li><a href="#usage">Usage</a></li>
+	<li><a href="#arguments">Arguments</a></li>
+	<li><a href="#pre_loop">Pre-loop</a></li>
+	<li><a href="#main">Main</a></li>
+	<li><a href="#subroutines">Subroutines</a></li>
+	<ul>
+
+		<li><a href="#get_db_handle">get_db_handle</a></li>
+		<li><a href="#run_sql">run_sql</a></li>
+		<li><a href="#run_select_sql">run_select_sql</a></li>
+		<li><a href="#get_error_file">get_error_file</a></li>
+		<li><a href="#print_time">print_time</a></li>
+		<li><a href="#create_helper_func">create_helper_func</a></li>
+		<li><a href="#able_all_triggers">able_all_triggers</a></li>
+		<li><a href="#parse_input_file">parse_input_file</a></li>
+	</ul>
+
+</ul>
+
+<hr name="index" />
+</div>
+<!-- INDEX END -->
+
+<p>
+</p>
+<hr />
+<h1><a name="name">Name</a></h1>
+<p>data_update_driver.pl</p>
+<p>
+</p>
+<hr />
+<h1><a name="description">Description</a></h1>
+<p>The purpose for this script is to take SQL statements that act on a lot of
+data (e.g. long UPDATEs) and break them into reasonable sized chunks.  The
+first partition is by the number of processes you want to run.  The size is
+the total number of keys in the table divided by the number of processes.</p>
+<p>The second partition is the number of rows you want to process at a time
+within a first partition.  For instance, the number of keys and processes
+may create a first partition of 10,000.  Within that, you might want to
+process 500 rows at a time.</p>
+<p>The script will start a new child process for each of the first partitions
+and within those, will process <em>n</em> number of rows, <em>n</em> and processes 
+being configurable.</p>
+<p>
+</p>
+<hr />
+<h1><a name="modules">Modules</a></h1>
+<p>Modules used and what for.</p>
+<p>Note: to load a new module into your local system, execute</p>
+<pre>
+        perl -MCPAN -e shell
+        cpan&gt; Module::Name
+        cpan&gt; quit</pre>
+<dl>
+<dt><strong><a name="dbi" class="item">DBI</a></strong></dt>
+
+<dd>
+<p>All interactions with the database and SQL.</p>
+</dd>
+<dt><strong><a name="dbd_pg" class="item">DBD::Pg</a></strong></dt>
+
+<dd>
+<p>Specific protocol for PostGreSQL.</p>
+</dd>
+<dt><strong><a name="parallel_forkmanager" class="item">Parallel::ForkManager</a></strong></dt>
+
+<dd>
+<p>Runs up to <em>n</em> number of processes in parallel.  <em>n</em> is set by <strong>--max-processes</strong>.</p>
+</dd>
+<dt><strong><a name="file_basename" class="item">File::Basename</a></strong></dt>
+
+<dd>
+<p>Use <code>basename()</code> to strip off path and extention of a file name.</p>
+</dd>
+<dt><strong><a name="getopt_long" class="item">Getopt::Long</a></strong></dt>
+
+<dd>
+<p>Retrieve long command line options (e.g. --xxx) and do simple validation.</p>
+</dd>
+<dt><strong><a name="term_readkey" class="item">Term::ReadKey</a></strong></dt>
+
+<dd>
+<p>Used to hide console echoing while typing in passwords.</p>
+</dd>
+<dt><strong><a name="pod_usage" class="item">Pod::Usage</a></strong></dt>
+
+<dd>
+<p>Used to display usage messages that are pulled from the program's POD.</p>
+</dd>
+</dl>
+<p>
+</p>
+<hr />
+<h1><a name="usage">Usage</a></h1>
+<pre>
+        post_update_driver.pl [--dir &lt;directory&gt;] [--finished-dir &lt;dir&gt;]
+                [--database &lt;db_name&gt;] [--host &lt;host_name&gt;] 
+                [--user &lt;user_name&gt;] [--password &lt;password&gt;] 
+                [--exit-on-error] [--max-processes &lt;number&gt;] 
+                [--rows &lt;number&gt;]</pre>
+<p>
+</p>
+<hr />
+<h1><a name="arguments">Arguments</a></h1>
+<dl>
+<dt><strong><a name="dir" class="item"><strong>dir</strong></a></strong></dt>
+
+<dd>
+<p>The directory containing the update scripts.  It defaults to the current 
+directory.</p>
+</dd>
+<dt><strong><a name="finished_dir" class="item"><strong>finished-dir</strong></a></strong></dt>
+
+<dd>
+<p>The directory where the scripts are moved to when they finish correctly.  It 
+defaults to a folder called 'finished'.</p>
+</dd>
+<dt><strong><a name="database" class="item"><strong>database</strong></a></strong></dt>
+
+<dd>
+<p>The database name.</p>
+</dd>
+<dt><strong><a name="host" class="item"><strong>host</strong></a></strong></dt>
+
+<dd>
+<p>The host name or IP address for the database.</p>
+</dd>
+<dt><strong><a name="user" class="item"><strong>user</strong></a></strong></dt>
+
+<dd>
+<p>The user name for the database.</p>
+</dd>
+<dt><strong><a name="password" class="item"><strong>password</strong></a></strong></dt>
+
+<dd>
+<p>The password for the database.  If none is provided, it will ask for one.</p>
+</dd>
+<dt><strong><a name="exit_on_error" class="item"><strong>exit-on-error</strong></a></strong></dt>
+
+<dd>
+<p>Flag: should the script stop when it encounters an SQL error?  If not, it will
+continue processing.  Regardless, an error file is created with the extension
+'.err' that holds the error message.</p>
+</dd>
+<dt><strong><a name="max_processes" class="item"><strong>max-processes</strong></a></strong></dt>
+
+<dd>
+<p>Number: what is the maximum number of processes to run in parallel?  The 
+default is four.</p>
+</dd>
+<dt><strong><a name="rows" class="item"><strong>rows</strong></a></strong></dt>
+
+<dd>
+<p>The number of rows the SQL script should process at a time.  The default
+is 500.</p>
+</dd>
+<dt><strong><a name="help" class="item"><strong>help</strong></a></strong></dt>
+
+<dd>
+<p>Display usage and exit.</p>
+</dd>
+</dl>
+<p>
+</p>
+<hr />
+<h1><a name="pre_loop">Pre-loop</a></h1>
+<p>Get command line options.  Get password if none is supplied.  Exit if <strong>dir</strong> 
+does not exist.  If <strong>finished_dir</strong> does not exist, create it.  Setup database 
+parameters.  Test database parameters to see if they connect correctly.  If 
+<strong>exit_on_error</strong> is set, make a callback for the parent process so it will die 
+if a child processes returns an error code.  Remove all error files.  These 
+would have been created by a previous run.</p>
+<p>
+</p>
+<hr />
+<h1><a name="main">Main</a></h1>
+<p>Roll through each data file in <strong>dir</strong> that ends with _data.sql.  Read the 
+file line by line.  The first comment (--) is the script's description.
+The first line that begins &quot;SELECT MAX&quot; is considered the id min and max 
+SQL, all in one line.  The id ranges are determined by
+executing this SQL.  The partition size is determined by diving the total
+number of keys by <strong>max-process</strong>.</p>
+<p>This script is responsible for creating its own wrapper function to be called
+with a start id and end id, if needed.  When the script encounters a data line 
+that begins
+&quot;CREATE [OR REPLACE] FUNCTION&quot;, it will start collecting lines.  It will end
+when it finds a line that starts with &quot;$$ LANGUAGE&quot;.  All of the lines between
+these two, inclusive, are the create wrapper function script.  The wrapper
+function should call the update function passing starting and ending ID.  You 
+may not need a wrapper function if you are calling an UPDATE direectly.</p>
+<p>The data line that starts with &quot;DROP FUNCTION&quot; is considered SQL to drop the
+wrapper function, if needed.  It should be one line only.  You do not need this
+SQL if you are not using the CREATE FUNCTION SQL.</p>
+<p>If a data line starts with &quot;ALTER TABLE&quot;, it is considered the enable/disable
+triggers SQL statement.  All triggers are disable before running the updates
+and enabled afterward.</p>
+<p>After all of the above lines
+are removed from consideration, what remains is the actual SQL update.  It is
+often just a SELECT statement that calls the wrapper function with the place
+holders &quot;~start_id~&quot; and &quot;~end_id~&quot;.  This script will replace them with the 
+values it calculates.</p>
+<p>Comments and blank lines are ignored.</p>
+<p>Then, start a loop for each partition size and
+start a child process for each one.  Within each partision, execute the SQL
+on only <strong>rows</strong> number of rows.  This is determined by setting the starting 
+and ending ID.  Since IDs aren't always sequential, there may be less that
+<strong>rows</strong> number of rows updated.</p>
+<p>After all partitions execute the file script is moved 
+to the <strong>finished_dir</strong> folder.  File scripts that encountered errors stay in
+<strong>dir</strong> with their error files.  Triggers are enabled.</p>
+<p>A sample data file might look like this:</p>
+<pre>
+        SELECT MAX(id), MIN(id) from schema.some_table;
+        
+        ALTER TABLE schema.some_table DISABLE TRIGGER ALL;
+        
+        UPDATE schema.some_table SET col_name = something 
+        WHERE id &gt;= ~start_id~ AND id &lt; ~end_id~;</pre>
+<p>A sample file that updates using a standard function in Evergreen might look 
+like this:</p>
+<pre>
+        CREATE OR REPLACE FUNCTION schema.wrapper_function(start_id BIGINT, end_id BIGINT) 
+        RETURNS void AS $$
+        DECLARE
+                rec RECORD;
+        BEGIN
+                FOR rec IN SELECT id, some_col FROM schema.table_to_update WHERE id &gt;= start_id AND id &lt; end_id 
+                LOOP
+                        PERFORM schema.update_function( rec.id, rec.some_col );
+                END LOOP;
+        END;
+        $$ LANGUAGE plpgsql;
+        
+        DROP FUNCTION IF EXISTS schema.wrapper_function(BIGINT, BIGINT);
+        
+        SELECT MAX(id), MIN(id) from schema.table_to_update;
+        
+        ALTER TABLE schema.some_table DISABLE TRIGGER ALL;
+        
+        SELECT schema.wrapper_function(~start_id~, ~end_id~);</pre>
+<p>
+</p>
+<hr />
+<h1><a name="subroutines">Subroutines</a></h1>
+<p>
+</p>
+<h2><a name="get_db_handle">get_db_handle</a></h2>
+<p>Get a database handle</p>
+<dl>
+<dt><strong><a name="parameters" class="item">Parameters</a></strong></dt>
+
+<dd>
+<p><strong>$db_params</strong> - reference to several DB parameters</p>
+</dd>
+<dt><strong><a name="returns" class="item">Returns</a></strong></dt>
+
+<dd>
+<p><strong>$dbh</strong> - database handle or zero</p>
+</dd>
+</dl>
+<p>
+</p>
+<h2><a name="run_sql">run_sql</a></h2>
+<p>Execute a non-SELECT SQL statement and capture any error output</p>
+<dl>
+<dt><strong><a name="parameters2" class="item">Parameters</a></strong></dt>
+
+<dd>
+<p><strong>$db_params</strong> - the DB parameters (ref to hash)</p>
+<p><strong>$sql</strong> - the SQL statement</p>
+<p><strong>$file</strong> - the file name</p>
+<p><strong>$desc</strong> - a description of the task (first comment)</p>
+<p><strong>$start_d</strong> - the starting ID when the error occurred or zero</p>
+</dd>
+<dt><strong><a name="returns2" class="item">Returns</a></strong></dt>
+
+<dd>
+<p>1 = success, 0 = failure</p>
+</dd>
+<dt><strong><a name="side_effects" class="item">Side Effects</a></strong></dt>
+
+<dd>
+<p>Creates a file with the extension .err if there is an error executing the SQL</p>
+</dd>
+</dl>
+<p>
+</p>
+<h2><a name="run_select_sql">run_select_sql</a></h2>
+<p>Execute a SELECT SQL statement and fetch one column</p>
+<dl>
+<dt><strong><a name="parameters3" class="item">Parameters</a></strong></dt>
+
+<dd>
+<p><strong>$db_params</strong> - the DB parameters (ref to hash)</p>
+<p><strong>$sql</strong> - the SQL statement</p>
+<p><strong>$file</strong> - the data input file name</p>
+<p><strong>$desc</strong> - a description of the task (first comment)</p>
+<p><strong>$start_id</strong> - the starting ID when the error occurred or zero</p>
+</dd>
+<dt><strong><a name="returns3" class="item">Returns</a></strong></dt>
+
+<dd>
+<p>An array of column values in list context, or a reference to the array in
+scalar context</p>
+</dd>
+<dt><strong><a name="side_effects2" class="item">Side Effects</a></strong></dt>
+
+<dd>
+<p>Creates a file with the extension .err if there is an error executing the SQL</p>
+</dd>
+</dl>
+<p>
+</p>
+<h2><a name="get_error_file">get_error_file</a></h2>
+<p>Create and open an error file.  Put in a timestamp.  The error file name is
+the file name with the extention of .err.</p>
+<dl>
+<dt><strong><a name="parameters4" class="item">Parameters</a></strong></dt>
+
+<dd>
+<p><strong>$file</strong>  - the file name to create the error file for</p>
+<p><strong>$start_id</strong> - the starting ID when the error occurred or zero</p>
+</dd>
+<dt><strong><a name="returns4" class="item">Returns</a></strong></dt>
+
+<dd>
+<p>An array in list context; a reference to an array in scalar context</p>
+<p>[0] <strong>$fail_fh</strong> - the file handle of the openned error file</p>
+<p>[1] <strong>$error_file</strong> - the error file name</p>
+</dd>
+</dl>
+<p>
+</p>
+<h2><a name="print_time">print_time</a></h2>
+<p>Print time elapsed in hours, minutes, and seconds</p>
+<dl>
+<dt><strong><a name="parameters5" class="item">Parameters</a></strong></dt>
+
+<dd>
+<p><strong>$start</strong> - the start time, taken from the <em>time()</em> function</p>
+</dd>
+<dt><strong><a name="side_effects3" class="item">Side Effects</a></strong></dt>
+
+<dd>
+<p>Prints elasped time to the standand out</p>
+</dd>
+</dl>
+<p>
+</p>
+<h2><a name="create_helper_func">create_helper_func</a></h2>
+<p>Create any helper functions needed by the update.  The input data file should 
+contain a commented DROP statement what will drop the function when it's not 
+needed.  For example:</p>
+<pre>
+        -- DROP FUNCTION IF EXISTS schema.some_function(BIGINT, TEXT)
+        
+        CREATE OR REPLACE FUNCTION schema.some_function(id BIGINT, marc TEXT)
+        ...</pre>
+<dl>
+<dt><strong><a name="parameters6" class="item">Parameters</a></strong></dt>
+
+<dd>
+<p><strong>$dir</strong> - the source directory for the input data files</p>
+<p><strong>$db_params</strong> - a hash reference to the DB parameters</p>
+</dd>
+<dt><strong><a name="returns5" class="item">Returns</a></strong></dt>
+
+<dd>
+<p>In list context, an array of SQL DROP statements that will remove the helper 
+functions at the end of the update.  In scalar context, a reference to that array.</p>
+</dd>
+<dt><strong><a name="side_effects4" class="item">Side Effects</a></strong></dt>
+
+<dd>
+<p>An error file is created if an error in encountered.</p>
+</dd>
+</dl>
+<p>
+</p>
+<h2><a name="able_all_triggers">able_all_triggers</a></h2>
+<p>Enable/Disable triggers on a table.  The SQL is pulled from the input data
+file line that begins &quot;ALTER TABLE&quot;.</p>
+<dl>
+<dt><strong><a name="paramters" class="item">Paramters</a></strong></dt>
+
+<dd>
+<p><strong>$able</strong> - The word ENABLE or DISABLE, depending on what you want to do to
+the triggers.  Defaults to DISABLE.</p>
+<p><strong>$range_sql</strong> - The SQL statement that gets the ID ranges, previously
+extracted from the input data file.</p>
+<p><strong>$file</strong> - The name of the input data file.</p>
+<p><strong>$db_params</strong> - The DB parameters (ref to hash)</p>
+</dd>
+<dt><strong><a name="side_effects5" class="item">Side Effects</a></strong></dt>
+
+<dd>
+<p>Enables or disables triggers for a table.</p>
+</dd>
+</dl>
+<p>
+</p>
+<h2><a name="parse_input_file">parse_input_file</a></h2>
+<p>Parse the input data file for different SQL statements and return each
+statement.</p>
+<dl>
+<dt><strong><a name="parameters7" class="item">Parameters</a></strong></dt>
+
+<dd>
+<p><strong>$input_fh</strong> - a file handle opened to the input file</p>
+<p><strong>$file</strong> - the input file name</p>
+</dd>
+<dt><strong><a name="returns6" class="item">Returns</a></strong></dt>
+
+<dd>
+<p>In array context, an array of all the different SQL statements parsed.  In
+scalar context, a reference to that array.</p>
+<p>[0] <strong>$sql</strong> - the main updating SQL statement(s)</p>
+<p>[1] <strong>$desc</strong> - the description of this task</p>
+<p>[2] <strong>$range_sql</strong> - the SQL statement that gets the ID ranges</p>
+<p>[3] <strong>$create_func_sql</strong> - the SQL to create a wrapper function, if any</p>
+<p>[4] <strong>$drop_func_sql</strong> - the SQL statement that drops the wrapper function, if any</p>
+<p>[5] <strong>$able_trigger</strong> - the SQL to enable/disable all triggers on the update table</p>
+</dd>
+</dl>
+
+</body>
+
+</html>

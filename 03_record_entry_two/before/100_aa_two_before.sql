@@ -1,0 +1,11 @@
+TRUNCATE metabib.real_full_rec;
+DROP INDEX metabib.full_rec_isbn_tpo_idx;
+DROP INDEX metabib.full_rec_url_tpo_idx;
+DROP INDEX metabib.metabib_full_rec_02x_tag_subfield_lower_substring;
+DROP INDEX metabib.metabib_full_rec_index_vector_idx;
+DROP INDEX metabib.metabib_full_rec_isxn_caseless_idx;
+DROP INDEX metabib.metabib_full_rec_record_idx;
+DROP INDEX metabib.metabib_full_rec_tag_record_idx;
+DROP INDEX metabib.metabib_full_rec_tag_subfield_idx;
+DROP INDEX metabib.metabib_full_rec_tnf_idx;
+DROP INDEX metabib.metabib_full_rec_value_tpo_idx;

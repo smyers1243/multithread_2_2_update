@@ -1,0 +1,5 @@
+TRUNCATE TABLE metabib.author_field_entry, metabib.normalized_author_field_entry;
+TRUNCATE TABLE metabib.keyword_field_entry, metabib.normalized_keyword_field_entry;
+TRUNCATE TABLE metabib.series_field_entry, metabib.normalized_series_field_entry;
+TRUNCATE TABLE metabib.subject_field_entry, metabib.normalized_subject_field_entry;
+TRUNCATE TABLE metabib.title_field_entry, metabib.normalized_title_field_entry;
